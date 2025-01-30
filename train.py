@@ -15,8 +15,9 @@ def load_data():
     s3_bucket = S3Bucket(bucket_name="dummy-data-rama-432", credentials=aws_credentials)
 
     # Download the files from S3 to a temporary location
-    s3_bucket.download_object_to_path("train.csv")
-    s3_bucket.download_object_to_path("test.csv")
+    s3_bucket.download_object_to_path("train.csv", "train.csv")
+    s3_bucket.download_object_to_path("test.csv", "test.csv")
+    s3_bucket.download_object_to_file_object()
 
     # Load the data into pandas DataFrame
     column_names = [
@@ -90,8 +91,8 @@ def save_model(model):
         bucket_name="dummy-model-rama-432", credentials=aws_credentials
     )
 
-    s3_bucket.upload_from_path("xgboost-model")
-    s3_bucket.upload_from_path("hyperparameters.json")
+    s3_bucket.upload_from_path("xgboost-model", "xgboost-model")
+    s3_bucket.upload_from_path("hyperparameters.json", "hyperparameters.json")
 
 
 @flow(log_prints=True, name="dummy-training-flow")
