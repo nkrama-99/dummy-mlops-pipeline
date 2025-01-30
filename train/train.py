@@ -1,4 +1,3 @@
-import argparse
 import json
 import os
 
@@ -7,8 +6,8 @@ import xgboost as xgb
 from sklearn.preprocessing import LabelEncoder
 
 
-def load_data(train_path, validation_path):
-    """Load training and validation data."""
+def load_data():
+    """Load training and validation data using default paths."""
     column_names = [
         "sepal_length",
         "sepal_width",
@@ -16,13 +15,13 @@ def load_data(train_path, validation_path):
         "petal_width",
         "target",
     ]
-    train_data = pd.read_csv(train_path, names=column_names, header=None)
-    validation_data = pd.read_csv(validation_path, names=column_names, header=None)
+    train_data = pd.read_csv("./temp/train.csv", names=column_names, header=None)
+    validation_data = pd.read_csv("./temp/test.csv", names=column_names, header=None)
     return train_data, validation_data
 
 
 def preprocess_data(train_data, validation_data):
-    """Preprocess data by encoding labels and separating features."""
+    """Preprocess data by encoding labels and creating DMatrix objects."""
     label_encoder = LabelEncoder()
     y_train = label_encoder.fit_transform(train_data["target"])
     y_validation = label_encoder.transform(validation_data["target"])
@@ -30,27 +29,38 @@ def preprocess_data(train_data, validation_data):
     X_train = train_data.drop("target", axis=1)
     X_validation = validation_data.drop("target", axis=1)
 
-    """Create DMatrix objects for XGBoost."""
     dtrain = xgb.DMatrix(X_train, label=y_train)
     dvalidation = xgb.DMatrix(X_validation, label=y_validation)
     return dtrain, dvalidation
 
 
-def train_model(dtrain, dvalidation, hyperparameters, num_round):
-    """Train the XGBoost model."""
+def train_model(dtrain, dvalidation):
+    """Train the XGBoost model using default hyperparameters."""
+    hyperparameters = {
+        "max_depth": 5,
+        "eta": 0.2,
+        "gamma": 4,
+        "min_child_weight": 6,
+        "subsample": 0.8,
+        "verbosity": 1,
+        "objective": "multi:softmax",
+        "tree_method": "gpu_hist",
+        "predictor": "auto",
+        "num_class": 3,
+    }
     watchlist = [(dtrain, "train"), (dvalidation, "validation")]
     model = xgb.train(
         hyperparameters,
         dtrain,
-        num_boost_round=num_round,
+        num_boost_round=100,
         evals=watchlist,
         early_stopping_rounds=10,
     )
     return model
 
 
-def save_model(model, model_dir):
-    """Save the trained model and hyperparameters."""
+def save_model(model, model_dir="model"):
+    """Save the trained model and hyperparameters to the specified directory."""
     os.makedirs(model_dir, exist_ok=True)
     model_location = os.path.join(model_dir, "xgboost-model")
     model.save_model(model_location)
@@ -62,61 +72,20 @@ def save_model(model, model_dir):
     print(f"Model saved to {model_location}")
 
 
-def parse_args():
-    """Parse command-line arguments."""
-    parser = argparse.ArgumentParser()
-
-    # Hyperparameters
-    parser.add_argument("--max_depth", type=int, default=5)
-    parser.add_argument("--eta", type=float, default=0.2)
-    parser.add_argument("--gamma", type=float, default=4)
-    parser.add_argument("--min_child_weight", type=float, default=6)
-    parser.add_argument("--subsample", type=float, default=0.8)
-    parser.add_argument("--verbosity", type=int, default=1)
-    parser.add_argument("--objective", type=str, default="multi:softmax")
-    parser.add_argument("--num_round", type=int, default=100)
-    parser.add_argument("--tree_method", type=str, default="gpu_hist")
-    parser.add_argument("--predictor", type=str, default="auto")
-    parser.add_argument("--num_class", type=int, default=3)
-
-    # Data paths
-    parser.add_argument("--train", type=str, default="./temp/train.csv")
-    parser.add_argument("--validation", type=str, default="./temp/test.csv")
-    parser.add_argument("--model_dir", type=str, default="model")
-
-    return parser.parse_args()
-
-
-def main():
-    """Main function to execute the training pipeline."""
-    args = parse_args()
-
+def execute_training_pipeline():
+    """Execute the training pipeline with default values."""
     # Load data
-    train_data, validation_data = load_data(args.train, args.validation)
+    train_data, validation_data = load_data()
 
     # Preprocess data
     dtrain, dvalidation = preprocess_data(train_data, validation_data)
 
-    # Define hyperparameters
-    hyperparameters = {
-        "max_depth": args.max_depth,
-        "eta": args.eta,
-        "gamma": args.gamma,
-        "min_child_weight": args.min_child_weight,
-        "subsample": args.subsample,
-        "verbosity": args.verbosity,
-        "objective": args.objective,
-        "tree_method": args.tree_method,
-        "predictor": args.predictor,
-        "num_class": args.num_class,
-    }
-
     # Train the model
-    model = train_model(dtrain, dvalidation, hyperparameters, args.num_round)
+    model = train_model(dtrain, dvalidation)
 
     # Save the model
-    save_model(model, args.model_dir)
+    save_model(model)
 
 
 if __name__ == "__main__":
-    main()
+    execute_training_pipeline()
