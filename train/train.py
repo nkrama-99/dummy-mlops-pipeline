@@ -7,7 +7,7 @@ from prefect import flow, task
 from sklearn.preprocessing import LabelEncoder
 
 
-@task
+@task(log_prints=True)
 def load_data():
     """Load training and validation data using default paths."""
     column_names = [
@@ -22,7 +22,7 @@ def load_data():
     return train_data, validation_data
 
 
-@task
+@task(log_prints=True)
 def preprocess_data(train_data, validation_data):
     """Preprocess data by encoding labels and creating DMatrix objects."""
     label_encoder = LabelEncoder()
@@ -37,7 +37,7 @@ def preprocess_data(train_data, validation_data):
     return dtrain, dvalidation
 
 
-@task
+@task(log_prints=True)
 def train_model(dtrain, dvalidation):
     """Train the XGBoost model using default hyperparameters."""
     hyperparameters = {
@@ -63,7 +63,7 @@ def train_model(dtrain, dvalidation):
     return model
 
 
-@task
+@task(log_prints=True)
 def save_model(model, model_dir="model"):
     """Save the trained model and hyperparameters to the specified directory."""
     os.makedirs(model_dir, exist_ok=True)
@@ -77,7 +77,7 @@ def save_model(model, model_dir="model"):
     print(f"Model saved to {model_location}")
 
 
-@flow(name="xgboost-training-pipeline")
+@flow(log_prints=True, name="dummy-training-flow")
 def execute_training_pipeline():
     """Execute the training pipeline with default values."""
     # Load data
@@ -94,7 +94,7 @@ def execute_training_pipeline():
 
 
 if __name__ == "__main__":
-    execute_training_pipeline.deploy(
-        name="dummy-training-pipeline",
-        work_pool_name="dummy-worker-pool",
-    )
+    flow.from_source(
+        source="https://github.com/nkrama-99/dummy-mlops-pipeline.git",
+        entrypoint="train/train.py:execute_training_pipeline",
+    ).deploy(name="dummy-training-deployment", work_pool_name="dummy-worker-pool")
