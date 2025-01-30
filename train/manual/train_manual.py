@@ -3,11 +3,9 @@ import os
 
 import pandas as pd
 import xgboost as xgb
-from prefect import flow, task
 from sklearn.preprocessing import LabelEncoder
 
 
-@task
 def load_data():
     """Load training and validation data using default paths."""
     column_names = [
@@ -22,7 +20,6 @@ def load_data():
     return train_data, validation_data
 
 
-@task
 def preprocess_data(train_data, validation_data):
     """Preprocess data by encoding labels and creating DMatrix objects."""
     label_encoder = LabelEncoder()
@@ -37,7 +34,6 @@ def preprocess_data(train_data, validation_data):
     return dtrain, dvalidation
 
 
-@task
 def train_model(dtrain, dvalidation):
     """Train the XGBoost model using default hyperparameters."""
     hyperparameters = {
@@ -63,7 +59,6 @@ def train_model(dtrain, dvalidation):
     return model
 
 
-@task
 def save_model(model, model_dir="model"):
     """Save the trained model and hyperparameters to the specified directory."""
     os.makedirs(model_dir, exist_ok=True)
@@ -77,7 +72,6 @@ def save_model(model, model_dir="model"):
     print(f"Model saved to {model_location}")
 
 
-@flow(name="xgboost-training-pipeline")
 def execute_training_pipeline():
     """Execute the training pipeline with default values."""
     # Load data
@@ -94,8 +88,4 @@ def execute_training_pipeline():
 
 
 if __name__ == "__main__":
-    execute_training_pipeline.deploy(
-        name="my-deployment",
-        work_pool_name="my-work-pool",
-        image="my_registry/my_image:my_image_tag",
-    )
+    execute_training_pipeline()
