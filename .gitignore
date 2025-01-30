@@ -1,0 +1,7 @@
+env
+__pycache__
+terraform*
+.terraform*
+train/model/
+set_environment_variables.ps1
+temp/
