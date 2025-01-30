@@ -17,7 +17,6 @@ def load_data():
     # Download the files from S3 to a temporary location
     s3_bucket.download_object_to_path("train.csv", "train.csv")
     s3_bucket.download_object_to_path("test.csv", "test.csv")
-    s3_bucket.download_object_to_file_object()
 
     # Load the data into pandas DataFrame
     column_names = [
