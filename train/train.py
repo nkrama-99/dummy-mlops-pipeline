@@ -95,7 +95,6 @@ def execute_training_pipeline():
 
 if __name__ == "__main__":
     execute_training_pipeline.deploy(
-        name="my-deployment",
-        work_pool_name="my-work-pool",
-        image="my_registry/my_image:my_image_tag",
+        name="dummy-training-pipeline",
+        work_pool_name="dummy-worker-pool",
     )
