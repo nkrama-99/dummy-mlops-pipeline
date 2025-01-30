@@ -44,7 +44,7 @@ resource "aws_iam_role" "dummy_mlops" {
 
 # Attach S3 Full Access policy
 resource "aws_iam_role_policy_attachment" "s3_full_access" {
-  role       = aws_iam_role.prefect_tutorial.name
+  role       = aws_iam_role.dummy_mlops.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
 }
 
