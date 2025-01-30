@@ -1,5 +1,3 @@
-import json
-
 import pandas as pd
 import xgboost as xgb
 from prefect import flow, task
@@ -92,13 +90,10 @@ def train_model(dtrain, dvalidation):
 
 @task(log_prints=True, cache_policy=NONE)
 def save_model(model):
-    """Save the trained model and hyperparameters to S3 bucket."""
-    print("Saving trained model and hyperparameters...")
+    """Save the trained model to S3 bucket."""
+    print("Saving trained model...")
     # Save the model to a local file first
     model.save_model("xgboost-model")
-
-    with open("hyperparameters.json", "w") as f:
-        json.dump(model.save_config(), f)
 
     # Save the model to an S3 bucket
     aws_credentials = AwsCredentials.load("aws-credentials")
@@ -107,11 +102,10 @@ def save_model(model):
         bucket_name="dummy-model-rama-432", credentials=aws_credentials
     )
 
-    print("Uploading model and hyperparameters to S3...")
+    print("Uploading model to S3...")
     s3_bucket.upload_from_path("xgboost-model", "xgboost-model")
-    s3_bucket.upload_from_path("hyperparameters.json", "hyperparameters.json")
 
-    print("Model and hyperparameters saved to S3 successfully.")
+    print("Model saved to S3 successfully.")
 
 
 @flow(log_prints=True, name="dummy-training-flow")
