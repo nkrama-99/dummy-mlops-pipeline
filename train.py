@@ -23,7 +23,7 @@ def load_data():
     ]
 
     # Replace with your actual bucket name and file paths
-    bucket_name = "dummy-data"
+    bucket_name = "dummy-data-rama-432"
     train_file_key = "train.csv"
     validation_file_key = "test.csv"
 
@@ -85,7 +85,7 @@ def save_model(model, model_dir="model"):
     s3_client = boto3.client("s3")
 
     # Set your S3 bucket name and paths for saving the model
-    bucket_name = "dummy-model"
+    bucket_name = "dummy-model-rama-432"
     model_file_key = "xgboost-model"
     hyperparameters_file_key = "hyperparameters.json"
 
