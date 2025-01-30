@@ -1,19 +1,24 @@
 import json
-import os
 
-import boto3
 import pandas as pd
 import xgboost as xgb
 from prefect import flow, task
+from prefect_aws import AwsCredentials, S3Bucket
 from sklearn.preprocessing import LabelEncoder
 
 
 @task(log_prints=True)
 def load_data():
     """Load training and validation data from S3 bucket."""
+    aws_credentials = AwsCredentials.load("aws-credentials")
 
-    s3_client = boto3.client("s3")
+    s3_bucket = S3Bucket(bucket_name="dummy-data-rama-432", credentials=aws_credentials)
 
+    # Download the files from S3 to a temporary location
+    s3_bucket.download_object_to_path("train.csv")
+    s3_bucket.download_object_to_path("test.csv")
+
+    # Load the data into pandas DataFrame
     column_names = [
         "sepal_length",
         "sepal_width",
@@ -22,16 +27,6 @@ def load_data():
         "target",
     ]
 
-    # Replace with your actual bucket name and file paths
-    bucket_name = "dummy-data-rama-432"
-    train_file_key = "train.csv"
-    validation_file_key = "test.csv"
-
-    # Download the files from S3 to a temporary location
-    s3_client.download_file(bucket_name, train_file_key, "train.csv")
-    s3_client.download_file(bucket_name, validation_file_key, "test.csv")
-
-    # Load the data into pandas DataFrame
     train_data = pd.read_csv("train.csv", names=column_names, header=None)
     validation_data = pd.read_csv("test.csv", names=column_names, header=None)
 
@@ -80,31 +75,23 @@ def train_model(dtrain, dvalidation):
 
 
 @task(log_prints=True)
-def save_model(model, model_dir="model"):
+def save_model(model):
     """Save the trained model and hyperparameters to S3 bucket."""
-    s3_client = boto3.client("s3")
-
-    # Set your S3 bucket name and paths for saving the model
-    bucket_name = "dummy-model-rama-432"
-    model_file_key = "xgboost-model"
-    hyperparameters_file_key = "hyperparameters.json"
-
     # Save the model to a local file first
-    model_location = os.path.join(model_dir, "xgboost-model")
-    model.save_model(model_location)
+    model.save_model("xgboost-model")
 
-    # Save the hyperparameters to a local file
-    hyperparameters_location = os.path.join(model_dir, "hyperparameters.json")
-    with open(hyperparameters_location, "w") as f:
+    with open("hyperparameters.json", "w") as f:
         json.dump(model.save_config(), f)
 
-    # Upload the model and hyperparameters to S3
-    s3_client.upload_file(model_location, bucket_name, model_file_key)
-    s3_client.upload_file(
-        hyperparameters_location, bucket_name, hyperparameters_file_key
+    # Save the model to a S3 bucket
+    aws_credentials = AwsCredentials.load("aws-credentials")
+
+    s3_bucket = S3Bucket(
+        bucket_name="dummy-model-rama-432", credentials=aws_credentials
     )
 
-    print(f"Model and hyperparameters saved to S3 bucket {bucket_name}")
+    s3_bucket.upload_from_path("xgboost-model")
+    s3_bucket.upload_from_path("hyperparameters.json")
 
 
 @flow(log_prints=True, name="dummy-training-flow")
