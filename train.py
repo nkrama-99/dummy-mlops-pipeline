@@ -62,7 +62,6 @@ def preprocess_data(train_data, validation_data):
 @task(log_prints=True, cache_policy=NONE)
 def train_model(dtrain, dvalidation):
     """Train the XGBoost model using default hyperparameters."""
-    print("Training XGBoost model with default hyperparameters...")
     hyperparameters = {
         "max_depth": 5,
         "eta": 0.2,
@@ -75,6 +74,9 @@ def train_model(dtrain, dvalidation):
         "predictor": "auto",
         "num_class": 3,
     }
+
+    print("hyperparameters:", hyperparameters)
+    print("Training XGBoost model...")
     watchlist = [(dtrain, "train"), (dvalidation, "validation")]
     model = xgb.train(
         hyperparameters,
