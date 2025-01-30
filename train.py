@@ -96,5 +96,5 @@ def execute_training_pipeline():
 if __name__ == "__main__":
     flow.from_source(
         source="https://github.com/nkrama-99/dummy-mlops-pipeline.git",
-        entrypoint="train/train.py:execute_training_pipeline",
+        entrypoint="train.py:execute_training_pipeline",
     ).deploy(name="dummy-training-deployment", work_pool_name="dummy-worker-pool")
