@@ -5,3 +5,4 @@ terraform*
 model/
 set_environment_variables.ps1
 temp/
+supabase_test.py

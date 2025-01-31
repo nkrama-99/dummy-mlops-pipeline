@@ -142,6 +142,8 @@ def add_model_to_registry(model_uuid, dataset_uuid):
         }
     ).execute()
 
+    print(f"Model {model_uuid} added to registry")
+
 
 @flow(log_prints=True, name="dummy-training-flow")
 def execute_training_pipeline():
@@ -151,7 +153,7 @@ def execute_training_pipeline():
     model_uuid, dataset_uuid = generate_training_uuids()
 
     # Load data
-    train_data, validation_data = load_data()
+    train_data, validation_data = load_data(dataset_uuid)
 
     # Preprocess data
     dtrain, dvalidation = preprocess_data(train_data, validation_data)
