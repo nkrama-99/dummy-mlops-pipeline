@@ -1,4 +1,4 @@
-import uuid
+from typing import List
 
 import numpy as np
 import xgboost as xgb
@@ -11,7 +11,7 @@ from supabase import create_client
 
 
 @task(log_prints=True, cache_policy=NONE)
-def load_model() -> xgb.Booster:
+def load_model(model_uuid: str) -> xgb.Booster:
     """Load a saved XGBoost model from S3"""
     aws_credentials = AwsCredentials.load("aws-credentials")
 
@@ -19,7 +19,7 @@ def load_model() -> xgb.Booster:
         bucket_name="dummy-model-rama-432", credentials=aws_credentials
     )
 
-    s3_bucket.download_object_to_path("xgboost-model", "xgboost-model")
+    s3_bucket.download_object_to_path(f"{model_uuid}-xgboost-model", "xgboost-model")
 
     model = xgb.Booster()
     model.load_model("xgboost-model")
@@ -65,28 +65,33 @@ def validate_predictions(predictions, expected):
 
 
 @task(log_prints=True, cache_policy=NONE)
-def save_testing_details(accuracy):
+def save_testing_details_to_registry(model_uuid: str, accuracy):
     """Save accuracy details to Supabase."""
     supabase = create_client(
         Secret.load("supabase-url").get(),
         Secret.load("supabase-key").get(),
     )
 
-    aws_credentials = AwsCredentials.load("aws-credentials")
+    supabase.table("model_registry").update(
+        {"accuracy": accuracy, "is_tested": True}
+    ).eq("model_uuid", model_uuid).execute()
 
-    s3_bucket = S3Bucket(
-        bucket_name="dummy-model-rama-432", credentials=aws_credentials
+
+@task(log_prints=True, cache_policy=NONE)
+def retrieve_models_to_test() -> List[str]:
+    supabase = create_client(
+        Secret.load("supabase-url").get(),
+        Secret.load("supabase-key").get(),
     )
 
-    model_uuid = str(uuid.uuid4())
+    models = (
+        supabase.table("model_registry")
+        .select("model_uuid")
+        .eq("is_tested", False)
+        .execute()
+    )
 
-    supabase.table("model_accuracy").insert(
-        {"model_uuid": model_uuid, "model_accuracy": accuracy}
-    ).execute()
-
-    print(f"New model saved: {model_uuid}")
-
-    s3_bucket.move_object("xgboost-model", model_uuid + "-xgboost-model")
+    return [model["model_uuid"] for model in models.data]
 
 
 @flow(log_prints=True, name="dummy-testing-flow")
@@ -105,16 +110,21 @@ def execute_testing_pipeline() -> None:
 
     expected_labels = [0, 1, 2, 0, 0, 1, 1, 2, 2]
 
-    model = load_model()
+    model_uuids = retrieve_models_to_test()
 
-    predictions = predict(model, samples)
+    for model_uuid in model_uuids:
+        print(f"Testing Model: {model_uuid}")
 
-    for sample, prediction in zip(samples, predictions):
-        print(f"Prediction for sample {sample}: {prediction}")
+        model = load_model(model_uuid)
 
-    accuracy = validate_predictions(predictions, expected_labels)
+        predictions = predict(model, samples)
 
-    save_testing_details(accuracy)
+        for sample, prediction in zip(samples, predictions):
+            print(f"Prediction for sample {sample}: {prediction}")
+
+        accuracy = validate_predictions(predictions, expected_labels)
+
+        save_testing_details_to_registry(accuracy)
 
 
 if __name__ == "__main__":
