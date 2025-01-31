@@ -131,7 +131,7 @@ resource "prefect_automation" "dummy_run_inference" {
     {
       type   = "run-deployment"
       source = "selected"
-      deployment_id = var.model_inference_deployment_id
+      deployment_id = var.model_testing_deployment_id
     }
   ]
 }
@@ -157,7 +157,7 @@ variable "model_training_deployment_id" {
   description = "ID of the deployment for model training"
 }
 
-variable "model_inference_deployment_id" {
+variable "model_testing_deployment_id" {
   type        = string
   description = "ID of the deployment for model inference"
 }
