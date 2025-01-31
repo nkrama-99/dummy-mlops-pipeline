@@ -1,9 +1,13 @@
+import uuid
+
 import numpy as np
 import xgboost as xgb
 from prefect import flow, task
+from prefect.blocks.system import Secret
 from prefect.cache_policies import NONE
 from prefect_aws import AwsCredentials, S3Bucket
 from sklearn.metrics import accuracy_score
+from supabase import create_client
 
 
 @task(log_prints=True, cache_policy=NONE)
@@ -48,7 +52,7 @@ def predict(model, samples) -> np.ndarray:
 
 
 @task(log_prints=True, cache_policy=NONE)
-def validate_predictions(predictions, expected) -> None:
+def validate_predictions(predictions, expected):
     """Validate predictions by comparing with expected values."""
 
     # Convert predictions to the closest class if necessary
@@ -57,6 +61,25 @@ def validate_predictions(predictions, expected) -> None:
     accuracy = accuracy_score(expected, predicted_classes)
 
     print(f"Validation Accuracy: {accuracy:.2%}")
+
+    return accuracy
+
+
+@task(log_prints=True, cache_policy=NONE)
+def save_testing_details(accuracy):
+    """Save accuracy details to Supabase."""
+    supabase = create_client(
+        Secret.load("supabase-url").get(),
+        Secret.load("supabase-key").get(),
+    )
+
+    model_uuid = str(uuid.uuid4())
+
+    supabase.table("model_accuracy").insert(
+        {"model_uuid": model_uuid, "model_accuracy": accuracy}
+    ).execute()
+
+    print(f"New model saved: {model_uuid}")
 
 
 @flow(log_prints=True, name="dummy-testing-flow")
@@ -82,7 +105,7 @@ def execute_testing_pipeline() -> None:
     for sample, prediction in zip(samples, predictions):
         print(f"Prediction for sample {sample}: {prediction}")
 
-    validate_predictions(predictions, expected_labels)
+    accuracy = validate_predictions(predictions, expected_labels)
 
 
 if __name__ == "__main__":
