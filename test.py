@@ -11,8 +11,13 @@ from supabase import create_client
 
 
 @task(log_prints=True, cache_policy=NONE)
-def load_model(s3_bucket: S3Bucket) -> xgb.Booster:
+def load_model() -> xgb.Booster:
     """Load a saved XGBoost model from S3"""
+    aws_credentials = AwsCredentials.load("aws-credentials")
+
+    s3_bucket = S3Bucket(
+        bucket_name="dummy-model-rama-432", credentials=aws_credentials
+    )
 
     s3_bucket.download_object_to_path("xgboost-model", "xgboost-model")
 
@@ -60,11 +65,17 @@ def validate_predictions(predictions, expected):
 
 
 @task(log_prints=True, cache_policy=NONE)
-def save_testing_details(s3_bucket: S3Bucket, accuracy):
+def save_testing_details(accuracy):
     """Save accuracy details to Supabase."""
     supabase = create_client(
         Secret.load("supabase-url").get(),
         Secret.load("supabase-key").get(),
+    )
+
+    aws_credentials = AwsCredentials.load("aws-credentials")
+
+    s3_bucket = S3Bucket(
+        bucket_name="dummy-model-rama-432", credentials=aws_credentials
     )
 
     model_uuid = str(uuid.uuid4())
@@ -94,13 +105,7 @@ def execute_testing_pipeline() -> None:
 
     expected_labels = [0, 1, 2, 0, 0, 1, 1, 2, 2]
 
-    aws_credentials = AwsCredentials.load("aws-credentials")
-
-    s3_bucket = S3Bucket(
-        bucket_name="dummy-model-rama-432", credentials=aws_credentials
-    )
-
-    model = load_model(s3_bucket)
+    model = load_model()
 
     predictions = predict(model, samples)
 
@@ -109,7 +114,7 @@ def execute_testing_pipeline() -> None:
 
     accuracy = validate_predictions(predictions, expected_labels)
 
-    save_testing_details(s3_bucket, accuracy)
+    save_testing_details(accuracy)
 
 
 if __name__ == "__main__":
