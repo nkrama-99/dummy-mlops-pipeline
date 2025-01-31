@@ -1,5 +1,3 @@
-from typing import Union
-
 import numpy as np
 import xgboost as xgb
 from prefect import flow, task
@@ -26,14 +24,23 @@ def load_model() -> xgb.Booster:
 
 
 @task(log_prints=True, cache_policy=NONE)
-def predict(model: xgb.Booster, X: Union[list[list[float]], np.ndarray]) -> np.ndarray:
-    """Make predictions using the loaded model
+def predict(model, samples) -> np.ndarray:
+    """Make predictions using the loaded model.
     Args:
-        model: Loaded XGBoost model
-        X: Features array/matrix in the same format used during training
+        model: Loaded XGBoost model.
+        X: Features array/matrix in the same format used during training.
+        feature_names: List of feature names corresponding to the columns in X.
     """
-    # Convert input to DMatrix (optional but recommended)
-    dtest = xgb.DMatrix(np.array(X))
+
+    # Define feature names (must match the training data)
+    feature_names = ["sepal_length", "sepal_width", "petal_length", "petal_width"]
+
+    # Convert samples to a NumPy array
+    X = np.array(samples)
+
+    # Convert input to DMatrix and include feature names
+    dtest = xgb.DMatrix(X, feature_names=feature_names)
+
     # Get predictions
     predictions = model.predict(dtest)
     return predictions
