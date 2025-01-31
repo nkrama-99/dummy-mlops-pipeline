@@ -48,7 +48,17 @@ def predict(model, samples) -> np.ndarray:
 
 @flow(log_prints=True, name="dummy-testing-flow")
 def execute_testing_pipeline() -> None:
-    samples = [[5.0, 3.4, 1.5, 0.2], [6.4, 3.2, 4.5, 1.5], [7.2, 3.6, 6.1, 2.5]]
+    samples = [
+        [5.0, 3.4, 1.5, 0.2],
+        [6.4, 3.2, 4.5, 1.5],
+        [7.2, 3.6, 6.1, 2.5],
+        [5.1, 3.5, 1.4, 0.2],
+        [4.9, 3.0, 1.4, 0.2],
+        [6.9, 3.1, 4.9, 1.5],
+        [5.5, 2.3, 4.0, 1.3],
+        [6.5, 3.0, 5.8, 2.2],
+        [7.6, 3.0, 6.6, 2.1],
+    ]
 
     model = load_model()
 
