@@ -3,6 +3,7 @@ import xgboost as xgb
 from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect_aws import AwsCredentials, S3Bucket
+from sklearn.metrics import accuracy_score
 
 
 @task(log_prints=True, cache_policy=NONE)
@@ -46,6 +47,18 @@ def predict(model, samples) -> np.ndarray:
     return predictions
 
 
+@task(log_prints=True, cache_policy=NONE)
+def validate_predictions(predictions, expected) -> None:
+    """Validate predictions by comparing with expected values."""
+
+    # Convert predictions to the closest class if necessary
+    predicted_classes = np.round(predictions)  # Adjust this based on model output
+
+    accuracy = accuracy_score(expected, predicted_classes)
+
+    print(f"Validation Accuracy: {accuracy:.2%}")
+
+
 @flow(log_prints=True, name="dummy-testing-flow")
 def execute_testing_pipeline() -> None:
     samples = [
@@ -60,12 +73,16 @@ def execute_testing_pipeline() -> None:
         [7.6, 3.0, 6.6, 2.1],
     ]
 
+    expected_labels = [0, 1, 2, 0, 0, 1, 1, 2, 2]
+
     model = load_model()
 
     predictions = predict(model, samples)
 
     for sample, prediction in zip(samples, predictions):
         print(f"Prediction for sample {sample}: {prediction}")
+
+    validate_predictions(predictions, expected_labels)
 
 
 if __name__ == "__main__":
