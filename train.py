@@ -1,13 +1,17 @@
+import uuid
+
 import pandas as pd
 import xgboost as xgb
 from prefect import flow, task
+from prefect.blocks.system import Secret
 from prefect.cache_policies import NONE
 from prefect_aws import AwsCredentials, S3Bucket
 from sklearn.preprocessing import LabelEncoder
+from supabase import create_client
 
 
 @task(log_prints=True, cache_policy=NONE)
-def load_data():
+def load_data(dataset_uuid):
     """Load training and validation data from S3 bucket."""
     print("Loading data from S3 bucket...")
     aws_credentials = AwsCredentials.load("aws-credentials")
@@ -35,6 +39,10 @@ def load_data():
     print(
         f"Data loaded: {len(train_data)} training samples and {len(validation_data)} validation samples."
     )
+
+    s3_bucket.move_object("train.csv", f"{dataset_uuid}/train.csv")
+    s3_bucket.move_object("test.csv", f"{dataset_uuid}/test.csv")
+
     return train_data, validation_data
 
 
@@ -91,7 +99,7 @@ def train_model(dtrain, dvalidation):
 
 
 @task(log_prints=True, cache_policy=NONE)
-def save_model(model):
+def save_model(model, model_uuid):
     """Save the trained model to S3 bucket."""
     print("Saving trained model...")
     # Save the model to a local file first
@@ -105,15 +113,43 @@ def save_model(model):
     )
 
     print("Uploading model to S3...")
-    s3_bucket.upload_from_path("xgboost-model", "xgboost-model")
+    s3_bucket.upload_from_path("xgboost-model", f"{model_uuid}-xgboost-model")
 
     print("Model saved to S3 successfully.")
+
+
+@flow(log_prints=True, name="dummy-training-flow")
+def generate_training_uuids():
+    model_uuid = str(uuid.uuid4())
+    dataset_uuid = str(uuid.uuid4())
+    print(f"model_uuid: {model_uuid}")
+    print(f"dataset_uuid: {dataset_uuid}")
+    return model_uuid, dataset_uuid
+
+
+@flow(log_prints=True, name="dummy-training-flow")
+def add_model_to_registry(model_uuid, dataset_uuid):
+    supabase = create_client(
+        Secret.load("supabase-url").get(),
+        Secret.load("supabase-key").get(),
+    )
+
+    supabase.table("model_registry").insert(
+        {
+            "dataset_uuid": dataset_uuid,
+            "model_uuid": model_uuid,
+            "is_tested": False,
+        }
+    ).execute()
 
 
 @flow(log_prints=True, name="dummy-training-flow")
 def execute_training_pipeline():
     """Execute the training pipeline with default values."""
     print("Starting the training pipeline...")
+
+    model_uuid, dataset_uuid = generate_training_uuids()
+
     # Load data
     train_data, validation_data = load_data()
 
@@ -124,7 +160,10 @@ def execute_training_pipeline():
     model = train_model(dtrain, dvalidation)
 
     # Save the model
-    save_model(model)
+    save_model(model, model_uuid)
+
+    # Log model to registry
+    add_model_to_registry(model_uuid, dataset_uuid)
 
     print("Training pipeline executed successfully.")
 
