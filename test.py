@@ -124,7 +124,7 @@ def execute_testing_pipeline() -> None:
 
         accuracy = validate_predictions(predictions, expected_labels)
 
-        save_testing_details_to_registry(accuracy)
+        save_testing_details_to_registry(model_uuid, accuracy)
 
 
 if __name__ == "__main__":
